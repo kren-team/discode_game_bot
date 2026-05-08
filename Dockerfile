@@ -9,5 +9,5 @@ RUN uv sync --frozen --no-cache
 
 COPY . .
 
-CMD ["uv", "run", "scripts/run.py"]
+CMD python3 -m http.server $PORT & uv run scripts/run.py
 
