@@ -1,5 +1,7 @@
 import random
 
+from wordfreq import zipf_frequency
+
 WORDS: list[str] = [
     "ABOUT", "ABOVE", "ABUSE", "ACTOR", "ACUTE", "ADMIT", "ADOPT", "ADULT",
     "AFTER", "AGAIN", "AGENT", "AGREE", "AHEAD", "ALARM", "ALBUM", "ALERT",
@@ -131,6 +133,8 @@ WORDS: list[str] = [
     "WITTY", "WREAK", "WREST", "WRING", "ZIPPY",
 ]
 
+_ANSWER_ZIPF_THRESHOLD = 4.0
+
 # Deduplicate and ensure exactly 5 uppercase alphabetic characters
 _WORD_SET: set[str] = {
     w.upper()
@@ -140,10 +144,16 @@ _WORD_SET: set[str] = {
 
 WORDS = sorted(_WORD_SET)
 
+# Answer candidates: common words only (Zipf >= threshold)
+_ANSWER_WORDS: list[str] = [
+    w for w in WORDS
+    if zipf_frequency(w, "en") >= _ANSWER_ZIPF_THRESHOLD
+]
+
 
 def get_random_word() -> str:
-    """Return a random word from the word list."""
-    return random.choice(WORDS)
+    """Return a random answer word (common words only)."""
+    return random.choice(_ANSWER_WORDS)
 
 
 def is_valid_word(word: str) -> bool:
