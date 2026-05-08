@@ -157,5 +157,6 @@ def get_random_word() -> str:
 
 
 def is_valid_word(word: str) -> bool:
-    """Return True if the given word (case-insensitive) is in the word list."""
-    return word.upper() in _WORD_SET
+    """Return True if the word exists in English (any difficulty)."""
+    w = word.lower()
+    return len(set(w)) >= 2 and zipf_frequency(w, "en") > 0
