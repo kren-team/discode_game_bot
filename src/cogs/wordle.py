@@ -249,6 +249,37 @@ class WordleCog(commands.Cog):
         )
         self._recruit_tasks[channel_id] = task
 
+    @app_commands.command(name="stop", description="進行中のWordleゲームを中断します（ホストのみ）")
+    async def stop_command(self, interaction: discord.Interaction) -> None:
+        channel_id = interaction.channel_id
+        assert channel_id is not None
+
+        game = self.active_games.get(channel_id)
+        if game is None:
+            await interaction.response.send_message(
+                "このチャンネルではゲームが進行中ではありません。", ephemeral=True
+            )
+            return
+
+        if interaction.user.id != game.host_id:
+            await interaction.response.send_message(
+                "ゲームを中断できるのはホストだけです！", ephemeral=True
+            )
+            return
+
+        was_playing = game.phase == GamePhase.PLAYING
+        answer = game.word if was_playing else None
+        self._cleanup_game(channel_id)
+
+        if was_playing:
+            await interaction.response.send_message(
+                f"🛑 **{interaction.user.display_name}** がゲームを中断しました。\n答えは **{answer}** でした。"
+            )
+        else:
+            await interaction.response.send_message(
+                f"🛑 **{interaction.user.display_name}** が参加者募集をキャンセルしました。"
+            )
+
     @app_commands.command(name="guess", description="Wordleで単語を推測します")
     @app_commands.describe(word="推測する5文字の英単語")
     async def guess_command(
@@ -409,7 +440,7 @@ class WordleCog(commands.Cog):
 
         if interaction is not None:
             # Force-start via button; the interaction was already deferred
-            game_msg = await interaction.followup.send(embed=game_embed)
+            game_msg = await interaction.followup.send(embed=game_embed, wait=True)
         else:
             game_msg = await channel.send(embed=game_embed)
 
@@ -433,8 +464,7 @@ class WordleCog(commands.Cog):
                 await channel.send(
                     "参加者がいなかったため、ゲームをキャンセルしました。"
                 )
-            self.active_games.pop(channel_id, None)
-            self._recruit_messages.pop(channel_id, None)
+            self._cleanup_game(channel_id)
             return
 
         await self.start_game(channel_id, interaction=None)
@@ -463,7 +493,10 @@ class WordleCog(commands.Cog):
             end_embed = build_end_embed(game)
             await channel.send(embed=end_embed)
 
-        # Clean up
+        self._cleanup_game(channel_id)
+
+    def _cleanup_game(self, channel_id: int) -> None:
+        """Remove all state for a game."""
         self.active_games.pop(channel_id, None)
         self._game_messages.pop(channel_id, None)
         self._recruit_messages.pop(channel_id, None)
